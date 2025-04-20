@@ -1,0 +1,59 @@
+services:
+  # Backend - API Node.js
+  api:
+    build: ./backend
+    container_name: api
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=db
+      - DB_USER=userapi
+      - DB_PASSWORD=passwordapi
+      - DB_NAME=userdb
+      - PORT=3000
+    depends_on:
+      db:
+        condition: service_healthy  # Espera a que db esté saludable
+    networks:
+      - app-network
+
+  # Base de datos MySQL
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: userdb
+      MYSQL_USER: userapi
+      MYSQL_PASSWORD: passwordapi
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s  # Espera extra al inicio
+
+  # Frontend - React App con Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "5173:3000"
+    depends_on:
+      - api
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
